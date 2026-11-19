@@ -4,10 +4,34 @@ supervisord 是用 Go 重写、兼容 Python supervisord 配置的进程管理�
 
 ## 安装前准备
 
-- 一台使用 systemd 的 Linux 服务器。推荐 Debian 12 / 13、Ubuntu 24.04；已实测 Debian 12、Debian 13、Ubuntu 23.04、23.10、24.04。
-- 架构：x86_64（amd64）、ARM64（aarch64）或 ARMv7。
+- 一台使用 systemd 的 Linux 服务器，系统和 CPU 架构见下面的“支持的系统”。
 - 用 root 登录，或者先执行 `sudo -i`。
-- 需要 `curl`（或 `wget`）和 `openssl`。Debian、Ubuntu 一般都自带；缺 `openssl` 时脚本会自动用 apt 安装。
+- 需要 `curl`（或 `wget`）和 `openssl`。Debian、Ubuntu 一般都自带；缺 `openssl` 时脚本会自动用 apt 安装，其他系统请先自己装好。
+
+### 支持的系统
+
+推荐 **Debian 12 / 13** 或 **Ubuntu 24.04 LTS**。下表是 v0.9.1 实际安装测试过的组合，每项都验证了下载、解密、启动服务、通过安全入口登录和程序隔离：
+
+| 系统 | 已实测的 CPU 架构 |
+| --- | --- |
+| Debian 13 | x86_64 |
+| Debian 12 | x86_64、ARM64 |
+| Ubuntu 24.04 LTS | x86_64、ARMv7 |
+| Ubuntu 23.04、23.10 | x86_64（这两个版本已停止维护，建议换成 24.04） |
+
+- 安装脚本按 `uname -m` 自动选择安装包：`x86_64` 用 `amd64`，`aarch64` 用 `arm64`，`armv7l` 用 `armv7`。程序是静态编译的，不依赖系统的 glibc，所以表里没有的组合（例如 Ubuntu 24.04 的 ARM64）预计同样可用，只是没有逐一测试。
+- 其他使用 systemd 的发行版（例如 Rocky Linux、AlmaLinux）没有实测。
+- 不支持：32 位 x86、ARMv6（初代树莓派、树莓派 Zero / Zero W）、没有 systemd 的环境（例如普通 Docker 容器）。
+
+内核版本不影响安装和面板本身，只决定被管理程序的隔离有多严格：
+
+| 内核 | 常见系统 | 程序隔离 |
+| --- | --- | --- |
+| 6.12 及以上 | Debian 13 | 全部生效：读不到面板的配置、私钥和日志，不能跟踪面板和其他程序，也不能给它们发信号 |
+| 5.19 到 6.11 | Debian 12（原装 6.1）、Ubuntu 24.04（原装 6.8） | 除了“不能发信号”以外都生效 |
+| 低于 5.19 | 较老的系统 | 程序能读到面板的配置；面板日志里会给出警告 |
+
+想在 Debian 12 或 Ubuntu 24.04 上得到完整隔离，可以换用 6.12 及以上的内核（Debian 12 用 bookworm-backports 里的内核，Ubuntu 24.04 用 HWE 内核），换内核需要重启服务器。
 
 ## 一键安装
 

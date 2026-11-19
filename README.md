@@ -6,7 +6,7 @@
 
 ## 第一次安装
 
-准备一台使用 systemd 的 Linux 服务器（推荐 Debian 12 / 13、Ubuntu 24.04），以 root 登录；sudo 用户先执行 `sudo -i`。向维护者索取**安装密码**，用于解密安装文件。
+准备一台使用 systemd 的 Linux 服务器（推荐 Debian 12 / 13、Ubuntu 24.04；支持 x86_64、ARM64、ARMv7，实测过的组合见[支持的系统](docs/DEPLOYMENT.md#支持的系统)），以 root 登录；sudo 用户先执行 `sudo -i`。向维护者索取**安装密码**，用于解密安装文件。
 
 在服务器终端逐行执行：
 
@@ -37,7 +37,7 @@ sudo sh install.sh
 
 ## English
 
-supervisord is a Go process manager compatible with Python supervisord configuration, with an HTTPS web console. Release files are encrypted; ask the maintainer for the installation password. On a Linux server with systemd, as root:
+supervisord is a Go process manager compatible with Python supervisord configuration, with an HTTPS web console. Release files are encrypted; ask the maintainer for the installation password. On a Linux server with systemd (x86_64, ARM64 or ARMv7; tested on Debian 12 and 13 and Ubuntu 23.04 to 24.04), as root:
 
 ```bash
 curl -fL --proto '=https' -o install.sh https://github.com/nickdodo1088/supervisord-releases/releases/latest/download/install.sh
