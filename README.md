@@ -23,7 +23,7 @@ sudo sh install.sh
 
 ## 升级
 
-重新下载并执行上面的 `install.sh`，它会识别现有安装并升级程序；配置、账号、密码、证书和安全入口保持不变。
+重新下载并执行上面的 `install.sh`，它会识别现有安装并升级程序；配置、账号、密码、证书和安全入口保持不变。从 v0.9.2 起是热升级：面板原地换成新版本，托管的程序不重启。详见[安装指南的“升级”](docs/DEPLOYMENT.md#升级)。
 
 ## 发布文件
 
@@ -44,4 +44,4 @@ curl -fL --proto '=https' -o install.sh https://github.com/nickdodo1088/supervis
 sudo sh install.sh --lang en
 ```
 
-Enter the installation password and the panel port (Enter keeps 8002). The installer prints the URL `https://<IP>:<port>/<entrance>`, the user name and the password, which is shown only once. The panel answers 404 without the entrance at the end of the URL. Run the same commands again to upgrade.
+Enter the installation password and the panel port (Enter keeps 8002). The installer prints the URL `https://<IP>:<port>/<entrance>`, the user name and the password, which is shown only once. The panel answers 404 without the entrance at the end of the URL. Run the same commands again to upgrade; from v0.9.2 on, upgrades keep the managed programs running.

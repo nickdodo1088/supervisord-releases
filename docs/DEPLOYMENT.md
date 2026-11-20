@@ -80,6 +80,7 @@ sudo sh install.sh
 | `--release-password-file ./pw.txt` | 从文件第一行读安装密码，不用手动输入 |
 | `-y` | 不提问，没给的选项都用默认值 |
 | `--no-firewall` | 不自动在 ufw / firewalld 放行端口 |
+| `--restart` | 升级时直接重启服务（所有程序都会重启一次），不做热升级 |
 | `--lang en` | 提示改用英文 |
 
 例如不想回答问题、全自动安装：
@@ -190,11 +191,21 @@ sudo sh install.sh
 
 升级只替换程序，配置、账号、密码、证书和安全入口都保持不变，不会再问端口。从很早的旧版本升级时，原来没有安全入口的安装仍然没有入口，地址不变。
 
+**升级不会重启你的程序。** 服务正在运行时，脚本做热升级：面板原地换成新版本，所有程序继续运行，进程号和日志都不中断。结束时显示“已热升级到 vX：托管的程序没有重启”。网页控制台会断开约一秒，需要重新登录。
+
+以下情况不做热升级，只替换程序文件，正在运行的面板和程序都不受影响，新版本在下次重启服务（`systemctl restart go-supervisord`，所有程序会重启一次）时生效：
+
+- 正在运行的是 v0.9.1 或更早的版本（它们还没有热升级功能）。从 v0.9.1 升上来后重启一次服务，之后的升级都是热升级。
+- 配置文件里改了某个程序但还没生效。先执行 `supervisord -c /etc/supervisord/supervisord.yaml ctl update` 或撤销修改，再重新运行安装命令。
+- 有程序正在启动或停止，30 秒内没有结束。稍后重新运行安装命令即可。
+
+想像以前一样直接重启服务，加 `--restart`。上一个版本保存在 `/usr/local/bin/supervisord.prev`，需要退回时把它改名回 `supervisord`，再重启服务。
+
 ## 卸载
 
 ```bash
 systemctl disable --now go-supervisord
-rm -f /etc/systemd/system/go-supervisord.service /usr/local/bin/supervisord
+rm -f /etc/systemd/system/go-supervisord.service /usr/local/bin/supervisord /usr/local/bin/supervisord.prev
 systemctl daemon-reload
 # 下面两行会删除配置（含账号、证书、程序列表），确认不再需要再执行
 rm -rf /etc/supervisord
