@@ -15,11 +15,11 @@ supervisord 是用 Go 重写、兼容 Python supervisord 配置的进程管理�
 | 系统 | 已实测的 CPU 架构 |
 | --- | --- |
 | Debian 13 | x86_64、ARM64 |
-| Debian 12 | x86_64、ARM64 |
+| Debian 12 | x86_64、ARM64、ARMv7 |
 | Ubuntu 24.04 LTS | x86_64、ARM64、ARMv7 |
 | Ubuntu 23.04、23.10 | x86_64（这两个版本已停止维护，建议换成 24.04） |
 
-- 安装脚本按 `uname -m` 自动选择安装包：`x86_64` 用 `amd64`，`aarch64` 用 `arm64`，`armv7l` 用 `armv7`。程序是静态编译的，不依赖系统的 glibc，所以表里没有的组合（例如 Debian 的 ARMv7、64 位树莓派 OS）预计同样可用，只是没有逐一测试。
+- 安装脚本按 `uname -m` 自动选择安装包：`x86_64` 用 `amd64`，`aarch64` 用 `arm64`，`armv7l` 用 `armv7`。程序是静态编译的，不依赖系统的 glibc，所以表里没有的组合（例如 Debian 13 的 ARMv7、64 位树莓派 OS）预计同样可用，只是没有逐一测试。
 - 其他使用 systemd 的发行版（例如 Rocky Linux、AlmaLinux）没有实测。
 - 不支持：32 位 x86、ARMv6（初代树莓派、树莓派 Zero / Zero W）、没有 systemd 的环境（例如普通 Docker 容器）。
 
