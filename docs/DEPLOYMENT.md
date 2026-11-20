@@ -201,6 +201,20 @@ sudo sh install.sh
 
 想像以前一样直接重启服务，加 `--restart`。上一个版本保存在 `/usr/local/bin/supervisord.prev`，需要退回时把它改名回 `supervisord`，再重启服务。
 
+热升级实测过的组合：
+
+| CPU 架构 | 系统 |
+| --- | --- |
+| x86_64 | Debian 12、Debian 13、Ubuntu 24.04 LTS |
+| ARM64 | Debian 13 |
+| ARMv7 | Ubuntu 24.04 LTS |
+
+每个组合都用发布页的 v0.9.2 安装包实测过：
+- v0.9.1 升上来时只替换文件，不动任何程序。
+- 新版本之间热升级时，面板和每个程序的进程号都不变，日志不缺行，事件监听器、程序隔离和网页登录都正常。
+- 配置有未生效的修改时拒绝升级，加 `--restart` 时照旧重启服务。
+- 热升级后 `systemctl stop` 能停掉全部程序；面板进程被强制结束时，systemd 会清理掉全部程序。
+
 ## 卸载
 
 ```bash
