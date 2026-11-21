@@ -199,7 +199,9 @@ sudo sh install.sh
 - 配置文件里改了某个程序但还没生效。先执行 `supervisord -c /etc/supervisord/supervisord.yaml ctl update` 或撤销修改，再重新运行安装命令。
 - 有程序正在启动或停止，30 秒内没有结束。稍后重新运行安装命令即可。
 
-想像以前一样直接重启服务，加 `--restart`。上一个版本保存在 `/usr/local/bin/supervisord.prev`，需要退回时把它改名回 `supervisord`，再重启服务。
+想像以前一样直接重启服务，加 `--restart`。
+
+上一个版本保存在 `/usr/local/bin/supervisord.prev`，需要退回时把它改名回 `supervisord`，再重启服务。**退回前先删掉旧版本不认识的配置项。** 旧版本遇到不认识的配置项会拒绝加载整个配置文件（日志里是 `unknown key`），服务启动不了，所有程序都不会运行。例如 `allow_sctp` 是 v0.9.3 新增的，退回 v0.9.2 前要先从配置文件里删掉。
 
 热升级实测过的组合：
 
