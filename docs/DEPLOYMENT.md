@@ -81,6 +81,8 @@ sudo sh install.sh
 | `-y` | 不提问，没给的选项都用默认值 |
 | `--no-firewall` | 不自动在 ufw / firewalld 放行端口 |
 | `--restart` | 升级时直接重启服务（所有程序都会重启一次），不做热升级 |
+| `--no-restart` | 正在运行的版本不能热升级时不自动重启，新版本等下次重启服务时生效 |
+| `--no-self-update` | 不自动换成最新版的 `install.sh`，安装这个脚本对应的版本 |
 | `--lang en` | 提示改用英文 |
 
 例如不想回答问题、全自动安装：
@@ -143,14 +145,10 @@ programs:
 然后：
 
 1. 把程序目录交给服务账号：`chown -R supervisord:supervisord /srv/my-app`。
-2. 服务的沙箱默认不能写系统目录。程序需要写入的目录要放行：执行 `systemctl edit go-supervisord`，写入下面两行后保存：
+2. 再运行一次 `sudo sh install.sh`。服务的沙箱默认不能写系统目录，脚本会把程序要写入、并且属于 `supervisord` 的目录（这里是 `/srv/my-app` 和 `/srv/my-app/logs`）自动加进沙箱的可写目录，不用自己改 systemd 设置。
+3. 执行 `systemctl restart go-supervisord`，沙箱设置在重启时生效。
 
-   ```ini
-   [Service]
-   ReadWritePaths=/srv/my-app
-   ```
-
-3. 执行 `systemctl restart go-supervisord`，或者在网页控制台点“重新加载配置”。
+程序还要写别的位置时，执行 `systemctl edit go-supervisord`，在 `[Service]` 下加 `ReadWritePaths=<目录>`。
 
 配置文件开头和末尾有带注释的示例；`environment`（环境变量）、`autorestart`、`stopsignal` 等写法与 Python supervisord 相同。
 
@@ -182,24 +180,27 @@ systemctl restart go-supervisord
 
 ## 升级
 
-在已经安装的服务器上，再执行一次同样的安装命令就是升级：
+在已经安装的服务器上，再执行一次安装命令就是升级，之后不需要手动做任何事：
 
 ```bash
 curl -fL --proto '=https' -o install.sh https://github.com/nickdodo1088/supervisord-releases/releases/latest/download/install.sh
 sudo sh install.sh
 ```
 
+从 v0.9.5 起，手里留着的 `install.sh` 是旧版本也可以直接运行：它会先从发布页取最新版的 `install.sh`，改用它来安装（加 `--no-self-update` 则安装这个脚本自己的版本）。v0.9.4 及更早的 `install.sh` 没有这个功能，用上面的命令重新下载一次。
+
 升级只替换程序，配置、账号、密码、证书和安全入口都保持不变，不会再问端口。从很早的旧版本升级时，原来没有安全入口的安装仍然没有入口，地址不变。
 
 **升级不会重启你的程序。** 服务正在运行时，脚本做热升级：面板原地换成新版本，所有程序继续运行，进程号和日志都不中断。结束时显示“已热升级到 vX：托管的程序没有重启”。网页控制台会断开约一秒，需要重新登录。
 
-以下情况不做热升级，只替换程序文件，正在运行的面板和程序都不受影响，新版本在下次重启服务（`systemctl restart go-supervisord`，所有程序会重启一次）时生效：
+不能热升级时，脚本自己处理：
 
-- 正在运行的是 v0.9.1 或更早的版本（它们还没有热升级功能）。从 v0.9.1 升上来后重启一次服务，之后的升级都是热升级。
-- 配置文件里改了某个程序但还没生效。先执行 `supervisord -c /etc/supervisord/supervisord.yaml ctl update` 或撤销修改，再重新运行安装命令。
-- 有程序正在启动或停止，30 秒内没有结束。稍后重新运行安装命令即可。
+- 正在运行的是 v0.9.1 或更早的版本（还没有热升级功能）：自动重启一次服务，所有程序重启一次。之后的升级都是热升级。
+- 有程序正在启动或停止，或者配置正在重新加载：等一会儿再试，试几次都不行就自动重启一次服务。
+- 自动重启后，脚本检查原来在运行的程序都重新运行起来，并且 10 秒内进程号不变。有程序起不来，就自动退回原来的版本：程序、systemd 设置和配置文件都恢复原样，服务照常运行，脚本列出起不来的程序并报错。
+- 配置文件里改了某个程序但还没生效（或者配置文件加载不了）：**不重启**，因为重启会让这些修改一起生效。正在运行的面板和程序都不受影响。在网页控制台点“重新加载配置”让修改生效，或者撤销修改，再运行一次安装命令就会热升级。
 
-想像以前一样直接重启服务，加 `--restart`。
+不想在升级时自动重启，加 `--no-restart`：不能热升级时只替换程序文件，新版本等下次重启服务时生效。想直接重启服务，加 `--restart`。
 
 上一个版本保存在 `/usr/local/bin/supervisord.prev`，需要退回时把它改名回 `supervisord`，再重启服务。**退回前先删掉旧版本不认识的配置项。** 旧版本遇到不认识的配置项会拒绝加载整个配置文件（日志里是 `unknown key`），服务启动不了，所有程序都不会运行。例如 `allow_sctp` 是 v0.9.3 新增的，退回 v0.9.2 前要先从配置文件里删掉。
 
@@ -212,16 +213,34 @@ sudo sh install.sh
 | ARMv7 | Ubuntu 24.04 LTS |
 
 每个组合都用发布页的 v0.9.2 安装包实测过：
-- v0.9.1 升上来时只替换文件，不动任何程序。
 - 新版本之间热升级时，面板和每个程序的进程号都不变，日志不缺行，事件监听器、程序隔离和网页登录都正常。
 - 配置有未生效的修改时拒绝升级，加 `--restart` 时照旧重启服务。
 - 热升级后 `systemctl stop` 能停掉全部程序；面板进程被强制结束时，systemd 会清理掉全部程序。
+
+v0.9.5 的安装脚本另外在 x86_64 的 Debian 13 和 Ubuntu 24.04 LTS 上实测过：从发布页的 v0.9.0 升级时自动重启并检查程序；从以 root 运行的 v0.8.0 自动迁移；迁移后有程序起不来时自动退回；旧的 `install.sh` 自动换成最新版。
+
+### 从以 root 运行的旧版本升级
+
+v0.8.0 的服务以 root 运行。新的安装脚本发现这样的安装时，会一次性迁移到专用账号 `supervisord`，全部自动完成：
+
+1. 先以 `supervisord` 账号加载配置做检查。下面这些情况不能安全地自动处理，脚本会列出来并停下，什么都不改，旧服务和程序照常以 root 运行：
+   - 程序设置了 `user=` 别的账号（服务账号不能切换账号）；
+   - 程序或它的目录在 `/home`、`/root` 下（服务看不到）；
+   - 有程序在监听小于 1024 的端口（需要 root）；
+   - 程序要写入的目录是系统目录（`/usr`、`/etc`、`/var/lib` 这类，或者软件包装的目录），或者属于别的账号；
+   - 路径里有空格或特殊字符。
+
+   处理好以后再运行一次安装命令。
+2. 把配置目录，以及程序要写入的目录（`directory` 和日志所在的目录）交给 `supervisord` 账号，并加进 systemd 沙箱的可写目录。只改原来属于 root 的文件，不跟随符号链接、不跨文件系统，别的账号的文件不动。
+3. 重启一次服务（只有这次迁移需要），所有程序改以 `supervisord` 账号运行。
+4. 检查原来在运行的程序都重新运行起来。有程序起不来（例如它还要写配置里没有写到的 root 目录），就自动退回：恢复原来的程序、systemd 设置和配置文件，服务照常以 root 运行，脚本列出起不来的程序。已经交给 `supervisord` 的目录不改回去，以 root 运行的旧版本照样能用。
 
 ## 卸载
 
 ```bash
 systemctl disable --now go-supervisord
 rm -f /etc/systemd/system/go-supervisord.service /usr/local/bin/supervisord /usr/local/bin/supervisord.prev
+rm -rf /etc/systemd/system/go-supervisord.service.d
 systemctl daemon-reload
 # 下面两行会删除配置（含账号、证书、程序列表），确认不再需要再执行
 rm -rf /etc/supervisord

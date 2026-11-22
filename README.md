@@ -23,7 +23,7 @@ sudo sh install.sh
 
 ## 升级
 
-重新下载并执行上面的 `install.sh`，它会识别现有安装并升级程序；配置、账号、密码、证书和安全入口保持不变。从 v0.9.2 起是热升级：面板原地换成新版本，托管的程序不重启。详见[安装指南的“升级”](docs/DEPLOYMENT.md#升级)。
+重新下载并执行上面的 `install.sh`，它会识别现有安装并升级程序；配置、账号、密码、证书和安全入口保持不变。从 v0.9.2 起是热升级：面板原地换成新版本，托管的程序不重启。从 v0.9.5 起升级不需要手动做任何事：留着的旧 `install.sh` 会自动换成最新版；不能热升级时自动重启一次并检查程序，起不来就自动退回原来的版本；以 root 运行的旧安装一次性自动迁移到专用账号。详见[安装指南的“升级”](docs/DEPLOYMENT.md#升级)。
 
 需要退回上一个版本时，先删掉旧版本不认识的配置项（例如 v0.9.3 新增的 `allow_sctp`），否则旧版本拒绝加载配置，服务启动不了。做法见同一节。
 
@@ -46,4 +46,4 @@ curl -fL --proto '=https' -o install.sh https://github.com/nickdodo1088/supervis
 sudo sh install.sh --lang en
 ```
 
-Enter the installation password and the panel port (Enter keeps 8002). The installer prints the URL `https://<IP>:<port>/<entrance>`, the user name and the password, which is shown only once. The panel answers 404 without the entrance at the end of the URL. Run the same commands again to upgrade; from v0.9.2 on, upgrades keep the managed programs running.
+Enter the installation password and the panel port (Enter keeps 8002). The installer prints the URL `https://<IP>:<port>/<entrance>`, the user name and the password, which is shown only once. The panel answers 404 without the entrance at the end of the URL. Run the same commands again to upgrade; from v0.9.2 on, upgrades keep the managed programs running. From v0.9.5 on an upgrade needs nothing by hand: an older install.sh switches to the latest one, a version too old for a hot upgrade is restarted once and its programs are checked (the previous version comes back if they fail), and an installation that ran as root moves to the dedicated account once.
