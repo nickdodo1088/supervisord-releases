@@ -236,6 +236,11 @@ v0.9.7 的安装脚本发布前在 x86_64 的 Debian 12、Debian 13 和 Ubuntu 2
 - 以 root 运行的 v0.8.0：一次完成账号迁移和搬家，程序以 `supervisord` 账号运行并继续写入数据。
 - 新安装：`/opt` 以外只有 systemd 服务文件。
 
+v0.9.7 发布后只用发布页的文件，在同样三个系统上又测过一遍，结果相同：
+- 发布页的 v0.9.6 直接再运行它自己的 `install.sh`（不加参数），自动换成最新版并搬到 `/opt/supervisord`；之后热升级时进程号都不变，网页登录保持。
+- 不能搬的几种情况都停下、什么都不改；搬完有程序起不来时全部搬回 v0.9.6。
+- 全新安装和以 root 运行的 v0.8.0 都正常，`/opt` 以外只有 systemd 服务文件。
+
 ### 从 v0.9.6 及更早的版本升级：自动搬到 /opt
 
 v0.9.6 及更早的版本装在 `/usr/local/bin/supervisord`、`/etc/supervisord` 和 `/var/lib/supervisord`。新的安装脚本发现这样的安装时，会一次性搬到 `/opt/supervisord`，全部自动完成：
