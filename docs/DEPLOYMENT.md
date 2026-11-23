@@ -219,7 +219,7 @@ sudo sh install.sh
 
 v0.9.5 的安装脚本另外实测过：
 - x86_64 的 Debian 12、Debian 13 和 Ubuntu 24.04 LTS：从发布页的 v0.9.0 升级时自动重启并检查程序；从以 root 运行的 v0.8.0 自动迁移；有不能安全迁移的程序时停下、什么都不改；迁移后有程序起不来时自动退回；旧的 `install.sh` 自动换成最新版（Debian 12 上换成的是发布页的 v0.9.5，并热升级）。
-- 发布后只用发布页的文件，在 x86_64（Debian 12、Debian 13、Ubuntu 24.04 LTS）、ARM64（Debian 12、Debian 13）和 ARMv7（Debian 12、Ubuntu 24.04 LTS）上：v0.9.4 热升级到 v0.9.5，面板和每个程序的进程号都不变，日志不缺行，再运行一次什么都不改；以 root 运行的 v0.8.0 由同一个 `install.sh` 自动迁移到 `supervisord`，程序照常运行并继续写入数据。
+- 发布后只用发布页的文件，在 x86_64（Debian 12、Debian 13、Ubuntu 24.04 LTS）、ARM64（Debian 12、Debian 13、Ubuntu 24.04 LTS）和 ARMv7（Debian 12、Ubuntu 24.04 LTS）上：v0.9.4 热升级到 v0.9.5，面板和每个程序的进程号都不变，日志不缺行，再运行一次什么都不改；以 root 运行的 v0.8.0 由同一个 `install.sh` 自动迁移到 `supervisord`，程序照常运行并继续写入数据。
 
 ### 从以 root 运行的旧版本升级
 
