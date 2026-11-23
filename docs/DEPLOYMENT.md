@@ -118,18 +118,21 @@ sudo sh install.sh --binary ./supervisord-<版本>-linux-amd64
 
 ## 装好以后
 
+所有文件都在 `/opt/supervisord` 下：
+
 | 位置 | 内容 |
 | --- | --- |
-| `/usr/local/bin/supervisord` | 程序本身 |
-| `/etc/supervisord/supervisord.yaml` | 配置文件：账号、密码哈希、证书、安全入口和要管理的程序 |
-| `/etc/supervisord/supervisord.log` | 面板自己的日志 |
-| `go-supervisord.service` | systemd 服务，开机自动启动 |
+| `/opt/supervisord/bin/supervisord` | 程序本身；上一个版本是同目录的 `supervisord.prev`。属于 root，服务自己改不了 |
+| `/opt/supervisord/etc/supervisord.yaml` | 配置文件：账号、密码哈希、证书、安全入口和要管理的程序 |
+| `/opt/supervisord/logs/supervisord.log` | 面板自己的日志；程序的日志也可以写在这个目录 |
+| `/opt/supervisord/data` | 服务账号的家目录 |
+| `/etc/systemd/system/go-supervisord.service` | systemd 服务，开机自动启动。systemd 只从 `/etc/systemd/system` 加载服务，所以只有它不在 `/opt` 下 |
 
 服务以专用普通账号 `supervisord` 运行，不是 root，没有任何特权；每个被管理的程序都在自己的沙箱里，读不到面板的配置和私钥。
 
 ## 添加要管理的程序
 
-用编辑器打开 `/etc/supervisord/supervisord.yaml`，在文件末尾加上，例如：
+用编辑器打开 `/opt/supervisord/etc/supervisord.yaml`，在文件末尾加上，例如：
 
 ```yaml
 programs:
@@ -158,21 +161,21 @@ programs:
 systemctl status go-supervisord          # 查看面板运行状态
 systemctl restart go-supervisord         # 重启面板（会按配置优雅停止再启动所有程序）
 journalctl -u go-supervisord -n 50       # 查看最近的面板日志
-supervisord -c /etc/supervisord/supervisord.yaml ctl status   # 在命令行查看程序状态
-grep entrance /etc/supervisord/supervisord.yaml               # 忘了安全入口
+/opt/supervisord/bin/supervisord ctl status       # 在命令行查看程序状态
+grep entrance /opt/supervisord/etc/supervisord.yaml   # 忘了安全入口
 ```
 
 **忘了登录密码**：重新生成一个（旧密码立即失效），然后重启：
 
 ```bash
-runuser -u supervisord -- /usr/local/bin/supervisord init --output /etc/supervisord/supervisord.yaml --reset-password
+runuser -u supervisord -- /opt/supervisord/bin/supervisord init --output /opt/supervisord/etc/supervisord.yaml --reset-password
 systemctl restart go-supervisord
 ```
 
 **更换安全入口**（6 到 64 位字母、数字、`-` 或 `_`）：
 
 ```bash
-runuser -u supervisord -- /usr/local/bin/supervisord init --output /etc/supervisord/supervisord.yaml --entrance 新入口
+runuser -u supervisord -- /opt/supervisord/bin/supervisord init --output /opt/supervisord/etc/supervisord.yaml --entrance 新入口
 systemctl restart go-supervisord
 ```
 
@@ -202,7 +205,7 @@ sudo sh install.sh
 
 不想在升级时自动重启，加 `--no-restart`：不能热升级时只替换程序文件，新版本等下次重启服务时生效。想直接重启服务，加 `--restart`。
 
-上一个版本保存在 `/usr/local/bin/supervisord.prev`，需要退回时把它改名回 `supervisord`，再重启服务。**退回前先删掉旧版本不认识的配置项。** 旧版本遇到不认识的配置项会拒绝加载整个配置文件（日志里是 `unknown key`），服务启动不了，所有程序都不会运行。例如 `allow_sctp` 是 v0.9.3 新增的，退回 v0.9.2 前要先从配置文件里删掉。
+上一个版本保存在 `/opt/supervisord/bin/supervisord.prev`，需要退回时把它改名回 `supervisord`，再重启服务。**退回前先删掉旧版本不认识的配置项。** 旧版本遇到不认识的配置项会拒绝加载整个配置文件（日志里是 `unknown key`），服务启动不了，所有程序都不会运行。例如 `allow_sctp` 是 v0.9.3 新增的，退回 v0.9.2 前要先从配置文件里删掉。
 
 热升级实测过的组合：
 
@@ -226,6 +229,31 @@ v0.9.6 发布后只用发布页的文件，在 x86_64 的 Debian 12、Debian 13 
 - 之后 `systemctl reload`、网页“重新加载配置”、再运行一次 `install.sh` 和热升级，已登录的网页都不用重新登录。
 - 用 v0.9.5 的 `install.sh` 加 `--no-self-update` 退回 v0.9.5，再用最新的 `install.sh` 升回 v0.9.6，两次都是热升级，进程号不变。
 
+v0.9.7 的安装脚本发布前在 x86_64 的 Debian 12、Debian 13 和 Ubuntu 24.04 LTS 上实测过：
+- 发布页的 v0.9.6 自动搬到 `/opt/supervisord`：程序重启一次后都正常运行，面板日志和用 `%(here)s` 写的程序日志都跟着搬过去，账号、密码和安全入口不变，旧位置什么都不留；之后再运行一次什么都不改，热升级时进程号都不变。
+- 配置里写了旧路径、`systemctl edit` 的设置里写了旧路径、配置有还没生效的修改、加了 `--no-restart`：都停下，什么都不改。
+- 搬完后有程序起不来：全部搬回原来的位置，v0.9.6 和所有程序照常运行，日志一行不少。
+- 以 root 运行的 v0.8.0：一次完成账号迁移和搬家，程序以 `supervisord` 账号运行并继续写入数据。
+- 新安装：`/opt` 以外只有 systemd 服务文件。
+
+### 从 v0.9.6 及更早的版本升级：自动搬到 /opt
+
+v0.9.6 及更早的版本装在 `/usr/local/bin/supervisord`、`/etc/supervisord` 和 `/var/lib/supervisord`。新的安装脚本发现这样的安装时，会一次性搬到 `/opt/supervisord`，全部自动完成：
+
+1. 先检查。下面这些情况脚本会列出来并停下，什么都不改，服务和程序照常运行：
+   - 配置文件（包括 include 的文件）里写了 `/etc/supervisord`、`/var/lib/supervisord` 或 `/usr/local/bin/supervisord` 这样的绝对路径，搬家后那里就没有了。用 `%(here)s`（配置文件所在的目录）写的路径会跟着一起搬，不受影响；
+   - 用 `systemctl edit go-supervisord` 加的设置里写了这几个路径；
+   - 配置文件里有还没生效的修改（搬家要重启一次服务，重启会让这些修改一起生效）；
+   - 加了 `--no-restart` 或 `--no-start`；
+   - `/opt/supervisord` 下已经有 `logs` 或 `data` 目录。
+
+   处理好以后再运行一次安装命令。
+2. 停止服务，把配置目录搬到 `/opt/supervisord/etc`，把 `/var/lib/supervisord` 搬到 `/opt/supervisord/data`，面板自己的日志搬到 `/opt/supervisord/logs`（配置里的 `logfile` 跟着改），服务账号的家目录改成 `/opt/supervisord/data`，换上新的 systemd 设置后启动。所有程序重启一次，只有这次搬家需要。
+3. 检查原来在运行的程序都重新运行起来，并且进程号稳定。有程序起不来，就全部搬回原来的位置，恢复原来的程序、systemd 设置和配置文件，服务照常运行，脚本列出起不来的程序。
+4. 成功后删掉 `/usr/local/bin/supervisord`，原来的版本保存为 `/opt/supervisord/bin/supervisord.prev`，`/opt` 以外不留任何文件（systemd 服务文件除外）。
+
+账号、密码、证书和安全入口都不变，访问地址也不变。命令行以后用 `/opt/supervisord/bin/supervisord`。程序自己的脚本里如果写死了这几个旧路径，脚本查不到，需要自己改。
+
 ### 从以 root 运行的旧版本升级
 
 v0.8.0 的服务以 root 运行。新的安装脚本发现这样的安装时，会一次性迁移到专用账号 `supervisord`，全部自动完成：
@@ -238,7 +266,7 @@ v0.8.0 的服务以 root 运行。新的安装脚本发现这样的安装时，�
    - 路径里有空格或特殊字符。
 
    处理好以后再运行一次安装命令。
-2. 把配置目录，以及程序要写入的目录（`directory` 和日志所在的目录）交给 `supervisord` 账号，并加进 systemd 沙箱的可写目录。只改原来属于 root 的文件，不跟随符号链接、不跨文件系统，别的账号的文件不动。
+2. 把配置目录，以及程序要写入的目录（`directory` 和日志所在的目录）交给 `supervisord` 账号，并加进 systemd 沙箱的可写目录。只改原来属于 root 的文件，不跟随符号链接、不跨文件系统，别的账号的文件不动。同时像上一节那样搬到 `/opt/supervisord`。
 3. 重启一次服务（只有这次迁移需要），所有程序改以 `supervisord` 账号运行。
 4. 检查原来在运行的程序都重新运行起来。有程序起不来（例如它还要写配置里没有写到的 root 目录），就自动退回：恢复原来的程序、systemd 设置和配置文件，服务照常以 root 运行，脚本列出起不来的程序。已经交给 `supervisord` 的目录不改回去，以 root 运行的旧版本照样能用。
 
@@ -246,11 +274,11 @@ v0.8.0 的服务以 root 运行。新的安装脚本发现这样的安装时，�
 
 ```bash
 systemctl disable --now go-supervisord
-rm -f /etc/systemd/system/go-supervisord.service /usr/local/bin/supervisord /usr/local/bin/supervisord.prev
+rm -f /etc/systemd/system/go-supervisord.service
 rm -rf /etc/systemd/system/go-supervisord.service.d
 systemctl daemon-reload
-# 下面两行会删除配置（含账号、证书、程序列表），确认不再需要再执行
-rm -rf /etc/supervisord
+# 下面两行会删除程序、配置（含账号、证书、程序列表）、日志和数据，确认不再需要再执行
+rm -rf /opt/supervisord
 userdel supervisord
 ```
 
