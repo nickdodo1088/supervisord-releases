@@ -6,7 +6,7 @@
 
 ## 第一次安装
 
-准备一台使用 systemd 的 Linux 服务器（推荐 Debian 12 / 13、Ubuntu 24.04；支持 x86_64、ARM64、ARMv7，实测过的组合见[支持的系统](docs/DEPLOYMENT.md#支持的系统)），以 root 登录；sudo 用户先执行 `sudo -i`。向维护者索取**安装密码**，用于解密安装文件。
+准备一台使用 systemd 的 Linux 服务器（推荐 Debian 12 / 13、Ubuntu 24.04；x86_64，实测过的组合见[支持的系统](docs/DEPLOYMENT.md#支持的系统)。ARM64、ARMv7 从 v0.9.8 起暂停发布，可以继续使用 v0.9.7），以 root 登录；sudo 用户先执行 `sudo -i`。向维护者索取**安装密码**，用于解密安装文件。
 
 在服务器终端逐行执行：
 
@@ -33,13 +33,12 @@ sudo sh install.sh
 | --- | --- |
 | `install.sh` | 安装与升级入口，内置本版本所有文件的 SHA-256 |
 | `supervisord-<版本>-linux-amd64.enc` | x86_64 服务器的加密程序 |
-| `supervisord-<版本>-linux-arm64.enc` | ARM64 服务器的加密程序 |
-| `supervisord-<版本>-linux-armv7.enc` | ARMv7 设备的加密程序 |
+| `supervisord-<版本>-linux-arm64.enc`、`-armv7.enc` | ARM 的加密程序，只有 v0.9.7 及以前的版本有 |
 | `checksums.txt` | 上面各文件的 SHA-256，供手动核对 |
 
 ## English
 
-supervisord is a Go process manager compatible with Python supervisord configuration, with an HTTPS web console. Release files are encrypted; ask the maintainer for the installation password. On a Linux server with systemd (x86_64, ARM64 or ARMv7; tested on Debian 12 and 13 and Ubuntu 23.04 to 24.04), as root:
+supervisord is a Go process manager compatible with Python supervisord configuration, with an HTTPS web console. Release files are encrypted; ask the maintainer for the installation password. On a Linux server with systemd (x86_64; tested on Debian 12 and 13 and Ubuntu 23.04 to 24.04; ARM builds are paused after v0.9.7), as root:
 
 ```bash
 curl -fL --proto '=https' -o install.sh https://github.com/nickdodo1088/supervisord-releases/releases/latest/download/install.sh

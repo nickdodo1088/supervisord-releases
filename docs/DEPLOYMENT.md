@@ -20,6 +20,7 @@ supervisord 是用 Go 重写、兼容 Python supervisord 配置的进程管理�
 | Ubuntu 23.04 | x86_64、ARM64（已停止维护，建议换成 24.04） |
 | Ubuntu 23.10 | x86_64（已停止维护，建议换成 24.04） |
 
+- 从 v0.9.8 起，发布页暂时只提供 x86_64（`amd64`）安装包，ARM64 和 ARMv7 暂停发布：在 ARM 机器上运行新版的 `install.sh` 会说明原因并停下，什么都不改。ARM 机器可以继续使用 v0.9.7：下载 v0.9.7 的 `install.sh`，加 `--no-self-update` 运行。表里的 ARM 组合是 v0.9.7 及以前实测的。
 - 安装脚本按 `uname -m` 自动选择安装包：`x86_64` 用 `amd64`，`aarch64` 用 `arm64`，`armv7l` 用 `armv7`。程序是静态编译的，不依赖系统的 glibc，所以表里没有的组合（例如 Ubuntu 23.10 的 ARM64、64 位树莓派 OS）预计同样可用，只是没有逐一测试。
 - 其他使用 systemd 的发行版（例如 Rocky Linux、AlmaLinux）没有实测。
 - 不支持：32 位 x86、ARMv6（初代树莓派、树莓派 Zero / Zero W）、没有 systemd 的环境（例如普通 Docker 容器）。
@@ -97,7 +98,7 @@ rm -f ./pw.txt
 
 1. 在能上网的机器上，从发布页 <https://github.com/nickdodo1088/supervisord-releases/releases/latest> 下载两个文件，放到服务器的同一个目录：
    - `install.sh`
-   - `supervisord-<版本>-linux-amd64.enc`（ARM64 服务器下载 `arm64`，ARMv7 下载 `armv7`）
+   - `supervisord-<版本>-linux-amd64.enc`（v0.9.7 及以前另有 ARM64 的 `arm64` 和 ARMv7 的 `armv7`）
 2. 在服务器上执行：
 
    ```bash
@@ -155,6 +156,10 @@ programs:
 
 配置文件开头和末尾有带注释的示例；`environment`（环境变量）、`autorestart`、`stopsignal` 等写法与 Python supervisord 相同。
 
+## 代码同步：推送代码后自动更新网站
+
+网站（PHP、HTML、前端编译结果）可以交给 supervisord 自动从 Git 仓库更新，取代循环执行 `git pull` 的脚本：远端为准，文件属于你指定的用户和组，失败在控制台显示原因，随时回滚。在控制台“代码同步”页面点“新增同步任务”，按向导生成配置、复制到配置文件，再在服务器上以 root 执行一次 `sudo /opt/supervisord/bin/supervisord deploy approve`。完整说明见 [代码同步](CODE_SYNC.md)。
+
 ## 常见操作
 
 ```bash
@@ -165,11 +170,10 @@ journalctl -u go-supervisord -n 50       # 查看最近的面板日志
 grep entrance /opt/supervisord/etc/supervisord.yaml   # 忘了安全入口
 ```
 
-**忘了登录密码**：重新生成一个（旧密码立即失效），然后重启：
+**忘了登录密码**：重新生成一个，用打印出的新密码直接登录。控制台一秒内就会用上新密码，旧密码和所有已登录的浏览器同时失效；不需要重启，程序不受影响（v0.9.8 起；更早的版本还要执行 `systemctl restart go-supervisord`）：
 
 ```bash
 runuser -u supervisord -- /opt/supervisord/bin/supervisord init --output /opt/supervisord/etc/supervisord.yaml --reset-password
-systemctl restart go-supervisord
 ```
 
 **更换安全入口**（6 到 64 位字母、数字、`-` 或 `_`）：
@@ -279,8 +283,9 @@ v0.8.0 的服务以 root 运行。新的安装脚本发现这样的安装时，�
 
 ```bash
 systemctl disable --now go-supervisord
-rm -f /etc/systemd/system/go-supervisord.service
-rm -rf /etc/systemd/system/go-supervisord.service.d
+systemctl disable --now 'go-supervisord-deploy@*.timer' 'go-supervisord-deploy@*.path' 2>/dev/null
+rm -f /etc/systemd/system/go-supervisord.service /etc/systemd/system/go-supervisord-deploy@.*
+rm -rf /etc/systemd/system/go-supervisord.service.d /etc/systemd/system/go-supervisord-deploy@*.d
 systemctl daemon-reload
 # 下面两行会删除程序、配置（含账号、证书、程序列表）、日志和数据，确认不再需要再执行
 rm -rf /opt/supervisord
@@ -292,6 +297,6 @@ userdel supervisord
 - `install.sh` 里写着本版本每个安装文件的 SHA-256。它先校验下载的加密文件，再解密，解密后再校验一次；文件被篡改或密码不对都会停止，不会安装任何东西。
 - 安装过程只从 GitHub 下载本版本的加密安装包，不下载其他脚本，不上报任何信息。
 - 面板只支持 HTTPS；不经过安全入口的访问一律返回 404；登录有失败次数限制。
-- 面板的 HTTP/2 用 Go 标准库实现（不是 nginx，不受 NGINX2Root 那组 nginx 漏洞影响），并限制了每个连接的并发流、帧大小和接收缓冲区。面板不提供 HTTP/3。
+- 面板的 HTTP/2 用 Go 标准库实现（不是 nginx，不受 NGINX2Root 那组 nginx 漏洞影响），并限制了每个连接的并发流、帧大小和接收缓冲区。对方把接收窗口一直设为 0、想占住内存和连接的攻击（HTTP/2 Bomb，CVE-2026-49975）也防住了：每个应答最多等 15 秒，不知道安全入口的访问不占用任何资源。面板不提供 HTTP/3。
 - 托管的程序默认不能创建 SCTP 套接字，即使某个程序被攻破，也无法借内核 SCTP 漏洞（CVE-2026-64564）提权。确实需要 SCTP 的程序设置 `allow_sctp: true`。服务器本身仍应升级内核；不用 SCTP 的服务器可以禁用 sctp 模块。
 - 安装密码请不要公开传播。
